@@ -5,9 +5,9 @@ import pickle as pk
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from math import cos, sin, pi
+import numpy as np
 
-
-plt.ion()
+#plt.ion()
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 plt.xlabel("X")
@@ -22,12 +22,12 @@ plt.ylabel("Y")
 
 a = 11120.68
 b = 32.8364
-cxn = Serial('/dev/ttyACM1', baudrate=9600)
+cxn = Serial('/dev/ttyACM0', baudrate=9600)
 
 fname = 'LastSessionData.pkl'
 IR_Data = []
 IR_Pos = []
-with open(fname, 'rb') as f:
+"""with open(fname, 'rb') as f:
     try:
         Data = pk.load(f)
         if type(Data) != list:
@@ -38,11 +38,11 @@ with open(fname, 'rb') as f:
             IR_Pos = Data[1]
     except EOFError:
         IR_Data = []
-        IR_Pos = []
+        IR_Pos = []"""
 
-plt.show()
+#plt.show()
 count = 0;
-while(True):
+while(count < 2500):
     try:
         cxn.write([1])
         while cxn.inWaiting() < 1:
@@ -53,30 +53,43 @@ while(True):
 
         volt = int(result[0])
         if (volt < 90 or volt > 700):
+            print("filtered out value")
             continue
         h_pos = int(result[1])
         v_pos = int(result[2])
-        h_ang = (h_pos-90)*pi/180;
-        v_ang = (v_pos-90)*pi/180;
-        dist = a/(volt-b)
-        x = -dist*cos(h_ang)*sin(v_ang);
-        y = dist*sin(h_ang)*sin(v_ang);
-        z = dist*cos(v_ang);
+        h_ang = float((h_pos-90)*pi/180);
+        v_ang = float((v_pos-90)*pi/180);
+        dist = float(a/(volt-b))
+        x = dist*cos(h_ang)*cos(v_ang);
+        y = dist*sin(h_ang)*cos(v_ang);
+        z = dist*sin(v_ang);
         color = 'blue'
-        if dist > 100:
-            color = 'red'
-        ax.scatter([x], [y], [z], color=color)
+    	if x < 50 and z > -8:
+            ax.scatter([x], [y], [z], color=color)
 
-        plt.draw()
-        plt.pause(.01)
-        IR_Data.append(dist)
-        IR_Pos.append((h_pos, v_pos))
-        #print "IR Reads: %i which is %i at angle %i" %(volt, dist, pos)
-        print "(x,y,z): (%i, %i, %i)" %(x, y, z)
+            if (count % 50):
+                plt.draw()
 
-        if count % 150 == 0:
+            IR_Data.append(dist)
+            IR_Pos.append((h_pos, v_pos))
+            #print "IR Reads: %i which is %i at angle %i" %(volt, dist, pos)
+            print "(x,y,z): (%f, %f, %f)" %(x, y, z)
+
+
+
+        else:
+            print("filtered out value")
+        count += 1
+        if count % 20 == 0:
             with open(fname, 'wb') as f:
                 pk.dump([IR_Data, IR_Pos], f);
-        count += 1
     except ValueError:
-        print "The Arduino Returned an Incorrect Value"
+        print "The Arduino Returned an Incorrect Value: %s" % cxn.readline()
+
+plt.show()
+#heatmap, xedges, yedges = np.histogram2d([x[0] for x in IR_Pos], [x[1] for x in IR_Pos], bins=50)
+#extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
+
+#plt.clf()
+#plt.imshow(heatmap.T, extent=extent, origin='lower')
+#plt.show()

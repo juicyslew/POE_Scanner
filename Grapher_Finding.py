@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pickle as pk
 
-fname = "CalibrationData.pkl"
+fname = "FinCalibrationData2.pkl"
 
 IR_Data = []
 with open(fname, 'rb') as f:
